@@ -5,8 +5,9 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods":["get"],
-      "route": "products"
+      "methods": ["get"],
+      "route": "products/{productid:guid}"     
+      
     },
     {
       "type": "http",
