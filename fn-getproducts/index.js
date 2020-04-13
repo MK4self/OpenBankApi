@@ -8,10 +8,11 @@ module.exports = async function (context, req) {
         const querySpec = {
             query: "SELECT * FROM PRODUCTS P WHERE ISDEFINED(P.data.productId) = false"
         };
-        const {resources:results} = await client.database(config.databaseId).container(config.containerId).items.query(querySpec).fetchAll();
+        //const {resources:results} 
+        var respo = await client.database(config.databaseId).container(config.containerId).items.query(querySpec).fetchAll();
             context.res = {
                 headers:{"content-type": "application/json"},
-                body: JSON.stringify(results),
+                body: JSON.stringify(respo.resources[0]),
                 status:200
                 //resources
             };

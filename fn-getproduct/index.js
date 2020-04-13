@@ -5,14 +5,14 @@ const key = config.key;
 const client = new CosmosClient({ endpoint, key });
 module.exports = async function (context, req) {
     try{
-        var productid=context.bindingData.productid;
+        var productid = context.bindingData.productid;
         const querySpec = {
-            query: "SELECT * FROM PRODUCTS P WHERE P.data.productid ='"+productid+"'"
+            query: "Select * From Products P WHERE P.data.productId = '" + productid + "'"
         };
-        const {resources} = await client.database(config.databaseId).container(config.containerId).items.query(querySpec).fetchAll();
+        const {resources:results} = await client.database(config.databaseId).container(config.containerId).items.query(querySpec.query).fetchAll();
             context.res = {
                 headers:{"content-type": "application/json"},
-                body: JSON.stringify(resources),
+                body: JSON.stringify(results),
                 status:200
                 //resources
             };
