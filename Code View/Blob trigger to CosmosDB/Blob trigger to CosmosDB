@@ -1,0 +1,173 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Scope": {
+                "actions": {
+                    "Create_or_update_document": {
+                        "inputs": {
+                            "body": "@addProperty(json(body('Get_blob_content')), 'id', if(equals(body('Execute_stored_procedure'), ''), guid(), body('Execute_stored_procedure')))",
+                            "headers": {
+                                "x-ms-documentdb-is-upsert": true,
+                                "x-ms-documentdb-partitionkey": "Type",
+                                "x-ms-documentdb-raw-partitionkey": "\"@{json(body('Get_blob_content')).Type}\""
+                            },
+                            "host": {
+                                "connection": {
+                                    "name": "@parameters('$connections')['documentdb']['connectionId']"
+                                }
+                            },
+                            "method": "post",
+                            "path": "/dbs/@{encodeURIComponent('cosmos-db-openbankingapi')}/colls/@{encodeURIComponent('products')}/docs"
+                        },
+                        "runAfter": {
+                            "Execute_stored_procedure": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "ApiConnection"
+                    },
+                    "Execute_stored_procedure": {
+                        "inputs": {
+                            "body": "[\"@{triggerBody()?['Name']}\"]",
+                            "headers": {
+                                "x-ms-documentdb-partitionkey": "Type",
+                                "x-ms-documentdb-raw-partitionkey": "\"@{json(body('Get_blob_content')).Type}\""
+                            },
+                            "host": {
+                                "connection": {
+                                    "name": "@parameters('$connections')['documentdb']['connectionId']"
+                                }
+                            },
+                            "method": "post",
+                            "path": "/dbs/@{encodeURIComponent('cosmos-db-openbankingapi')}/colls/@{encodeURIComponent('products')}/sprocs/@{encodeURIComponent('getDocumentId')}"
+                        },
+                        "runAfter": {
+                            "Get_blob_content": [
+                                "Succeeded"
+                            ]
+                        },
+                        "type": "ApiConnection"
+                    },
+                    "Get_blob_content": {
+                        "inputs": {
+                            "host": {
+                                "connection": {
+                                    "name": "@parameters('$connections')['azureblob']['connectionId']"
+                                }
+                            },
+                            "method": "get",
+                            "path": "/datasets/default/files/@{encodeURIComponent(encodeURIComponent(triggerBody()?['Id']))}/content",
+                            "queries": {
+                                "inferContentType": true
+                            }
+                        },
+                        "runAfter": {},
+                        "type": "ApiConnection"
+                    }
+                },
+                "runAfter": {},
+                "type": "Scope"
+            },
+            "Send_Error_Email": {
+                "inputs": {
+                    "body": {
+                        "Body": "<p>Error</p>",
+                        "Subject": "Error while uploading file - @{triggerBody()?['Name']}",
+                        "To": "mrinal3rajput@gmail.com"
+                    },
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['outlook']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/v2/Mail"
+                },
+                "runAfter": {
+                    "Scope": [
+                        "Failed"
+                    ]
+                },
+                "type": "ApiConnection"
+            },
+            "Send_Success_Email": {
+                "inputs": {
+                    "body": {
+                        "Body": "<p>File was successfully updated to cosmosdb.</p>",
+                        "Subject": "File upload successful - @{triggerBody()?['Name']}",
+                        "To": "mrinal3rajput@gmail.com"
+                    },
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['outlook']['connectionId']"
+                        }
+                    },
+                    "method": "post",
+                    "path": "/v2/Mail"
+                },
+                "runAfter": {
+                    "Scope": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ApiConnection"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "When_a_blob_is_added_or_modified_(properties_only)": {
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azureblob']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/datasets/default/triggers/batch/onupdatedfile",
+                    "queries": {
+                        "folderId": "JTJmcHJvZHVjdHM=",
+                        "maxFileCount": 10
+                    }
+                },
+                "metadata": {
+                    "JTJmcHJvZHVjdHM=": "/products"
+                },
+                "recurrence": {
+                    "frequency": "Hour",
+                    "interval": 25
+                },
+                "splitOn": "@triggerBody()",
+                "type": "ApiConnection"
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "azureblob": {
+                    "connectionId": "/subscriptions/59fd9e8a-5b12-4ff3-9cac-b363edcf66a9/resourceGroups/rg-openbankingapi/providers/Microsoft.Web/connections/azureblob",
+                    "connectionName": "azureblob",
+                    "id": "/subscriptions/59fd9e8a-5b12-4ff3-9cac-b363edcf66a9/providers/Microsoft.Web/locations/australiaeast/managedApis/azureblob"
+                },
+                "documentdb": {
+                    "connectionId": "/subscriptions/59fd9e8a-5b12-4ff3-9cac-b363edcf66a9/resourceGroups/rg-openbankingapi/providers/Microsoft.Web/connections/documentdb-2",
+                    "connectionName": "documentdb-2",
+                    "id": "/subscriptions/59fd9e8a-5b12-4ff3-9cac-b363edcf66a9/providers/Microsoft.Web/locations/australiaeast/managedApis/documentdb"
+                },
+                "outlook": {
+                    "connectionId": "/subscriptions/59fd9e8a-5b12-4ff3-9cac-b363edcf66a9/resourceGroups/rg-openbankingapi/providers/Microsoft.Web/connections/outlook",
+                    "connectionName": "outlook",
+                    "id": "/subscriptions/59fd9e8a-5b12-4ff3-9cac-b363edcf66a9/providers/Microsoft.Web/locations/australiaeast/managedApis/outlook"
+                }
+            }
+        }
+    }
+}
